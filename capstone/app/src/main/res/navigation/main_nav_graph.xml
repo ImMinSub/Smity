@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/serverListFragment">
+
+    <fragment
+        android:id="@+id/serverListFragment"
+        android:name="com.example.capstone.ui.main.ServerListFragment"
+        android:label="서버 목록"
+        tools:layout="@layout/fragment_server_list">
+        <action
+            android:id="@+id/action_serverListFragment_to_createServerFragment"
+            app:destination="@id/createServerFragment" />
+        <action
+            android:id="@+id/action_serverListFragment_to_channelListFragment"
+            app:destination="@id/channelListFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/createServerFragment"
+        android:name="com.example.capstone.ui.main.CreateServerFragment"
+        android:label="서버 만들기"
+        tools:layout="@layout/fragment_create_server" />
+
+    <fragment
+        android:id="@+id/channelListFragment"
+        android:name="com.example.capstone.ui.main.ChannelListFragment"
+        android:label="채널 목록"
+        tools:layout="@layout/fragment_channel_list">
+        <action
+            android:id="@+id/action_channelListFragment_to_createChannelFragment"
+            app:destination="@id/createChannelFragment" />
+        <action
+            android:id="@+id/action_channelListFragment_to_chatFragment"
+            app:destination="@id/chatFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/createChannelFragment"
+        android:name="com.example.capstone.ui.main.CreateChannelFragment"
+        android:label="채널 만들기"
+        tools:layout="@layout/fragment_create_channel" />
+
+    <fragment
+        android:id="@+id/chatFragment"
+        android:name="com.example.capstone.ui.main.ChatFragment"
+        android:label="채팅"
+        tools:layout="@layout/fragment_chat" />
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.example.capstone.ui.main.ProfileFragment"
+        android:label="프로필"
+        tools:layout="@layout/fragment_profile" />
+
+</navigation> 

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- 채팅 앱 색상 -->
+    <color name="background_dark">#2C2F33</color>
+    <color name="header_background">#23272A</color>
+    <color name="chat_background">#36393F</color>
+    <color name="input_background">#40444B</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B9BBBE</color>
+    <color name="highlight">#7289DA</color>
+    
+    <!-- 디스코드 테마 색상 -->
+    <color name="discord_background">#36393F</color>
+    <color name="background_darker">#2F3136</color>
+    <color name="background_light">#40444B</color>
+    <color name="text_normal">#DCDDDE</color>
+    <color name="text_muted">#72767D</color>
+    <color name="interactive_normal">#B9BBBE</color>
+    <color name="interactive_hover">#DCDDDE</color>
+    <color name="interactive_active">#FFFFFF</color>
+    <color name="interactive_muted">#4F545C</color>
+    <color name="channel_text">#8E9297</color>
+    <color name="channel_text_active">#FFFFFF</color>
+    
+    <!-- 기본 색상 -->
+    <color name="colorPrimary">#5865F2</color>
+    <color name="colorPrimaryDark">#4752C4</color>
+    <color name="colorAccent">#ED4245</color>
+</resources>
