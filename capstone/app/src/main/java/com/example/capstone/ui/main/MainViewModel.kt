@@ -2,6 +2,7 @@ package com.example.capstone.ui.main
 
 import android.net.Uri
 import android.util.Log
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,7 +21,11 @@ class MainViewModel @Inject constructor(
     private val firebaseSource: FirebaseSource
 ) : ViewModel() {
 
-    val currentUser = MutableLiveData<User>()
+    private val TAG = "MainViewModel"
+    
+    private val _currentUser = MutableLiveData<User?>()
+    val currentUser: LiveData<User?> = _currentUser
+    
     val currentServer = MutableLiveData<Server>()
     val currentChannel = MutableLiveData<Channel>()
     val messages = MutableLiveData<List<Message>>()
@@ -28,7 +33,7 @@ class MainViewModel @Inject constructor(
     val channels = MutableLiveData<List<Channel>>()
     
     private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
-        Log.e("MainViewModel", "코루틴 에러 발생: ${exception.localizedMessage}", exception)
+        Log.e(TAG, "코루틴 에러 발생: ${exception.localizedMessage}", exception)
     }
 
     init {
@@ -38,21 +43,59 @@ class MainViewModel @Inject constructor(
     private fun loadCurrentUser() {
         viewModelScope.launch(exceptionHandler) {
             try {
-                val currentFirebaseUser = firebaseSource.getCurrentUser()
-                if (currentFirebaseUser != null) {
-                    val userId = currentFirebaseUser.uid
+                val userId = firebaseSource.getCurrentUser()?.uid
+                if (userId != null) {
+                    // Firebase에서 최신 사용자 정보 가져오기
                     val user = firebaseSource.getUserById(userId)
                     if (user != null) {
-                        currentUser.postValue(user)
+                        _currentUser.postValue(user)  // postValue 사용하여 UI 스레드에서 설정
+                        Log.d(TAG, "사용자 정보 로드 성공: ${user.username}, 이메일: ${user.email}")
                     } else {
-                        Log.w("MainViewModel", "사용자 데이터를 Firestore에서 찾을 수 없습니다: $userId")
+                        Log.e(TAG, "사용자 정보를 찾을 수 없습니다: $userId")
+                        // 사용자가 존재하지 않으면 기본 정보로 생성
+                        val currentFirebaseUser = firebaseSource.getCurrentUser()
+                        if (currentFirebaseUser != null) {
+                            val newUser = User(
+                                id = userId,
+                                username = currentFirebaseUser.displayName ?: "사용자",
+                                email = currentFirebaseUser.email ?: "",
+                                profileImageUrl = "https://via.placeholder.com/150",
+                                status = "온라인"
+                            )
+                            // 새 사용자 프로필 생성
+                            firebaseSource.createUserProfile(newUser)
+                            _currentUser.postValue(newUser)
+                            Log.d(TAG, "새 사용자 프로필 생성: ${newUser.email}")
+                        }
                     }
                 } else {
-                    Log.w("MainViewModel", "Firebase 사용자가 널입니다. 로그인이 필요합니다.")
+                    Log.e(TAG, "현재 로그인된 사용자 ID를 가져올 수 없습니다.")
                 }
             } catch (e: Exception) {
-                Log.e("MainViewModel", "사용자 로드 중 에러 발생", e)
+                Log.e(TAG, "사용자 정보 로드 중 오류 발생", e)
             }
+        }
+    }
+
+    fun updateUserProfile(user: User) {
+        viewModelScope.launch(exceptionHandler) {
+            try {
+                firebaseSource.updateUserProfile(user)
+                _currentUser.value = user
+                Log.d(TAG, "사용자 프로필 업데이트 성공: ${user.id}")
+            } catch (e: Exception) {
+                Log.e(TAG, "사용자 프로필 업데이트 중 오류 발생", e)
+            }
+        }
+    }
+
+    fun logout() {
+        try {
+            firebaseSource.logoutUser()
+            _currentUser.value = null
+            Log.d(TAG, "로그아웃 성공")
+        } catch (e: Exception) {
+            Log.e(TAG, "로그아웃 중 오류 발생", e)
         }
     }
 
@@ -146,7 +189,8 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun logout() {
-        firebaseSource.logoutUser()
+    // 사용자 정보 새로고침 함수 추가
+    fun refreshUserProfile() {
+        loadCurrentUser()
     }
 }
