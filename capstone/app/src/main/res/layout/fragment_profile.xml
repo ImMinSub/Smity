@@ -70,6 +70,26 @@
                         android:text="user@example.com"
                         android:textColor="@android:color/darker_gray"
                         android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/userAgeText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="4dp"
+                        android:text="나이: 미설정"
+                        android:textColor="@android:color/black"
+                        android:textSize="16sp" />
+                        
+                    <TextView
+                        android:id="@+id/userMbtiText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="4dp"
+                        android:text="MBTI: 미설정"
+                        android:textColor="@android:color/black"
+                        android:textSize="16sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
