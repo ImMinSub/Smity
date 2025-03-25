@@ -44,10 +44,17 @@ class ProfileFragment : Fragment() {
         try {
             Log.d(TAG, "onViewCreated 시작")
             
+            // 사용자 정보 새로고침
+            viewModel.refreshUserProfile()
+            
             // 현재 사용자 정보 로드
             viewModel.currentUser.observe(viewLifecycleOwner) { user ->
                 if (user != null) {
+                    Log.d(TAG, "사용자 정보 업데이트: ${user.email}")
                     updateProfileUI(user)
+                } else {
+                    Log.e(TAG, "사용자 정보가 null입니다.")
+                    Toast.makeText(context, "사용자 정보를 불러올 수 없습니다", Toast.LENGTH_SHORT).show()
                 }
             }
             
@@ -63,17 +70,26 @@ class ProfileFragment : Fragment() {
     
     private fun updateProfileUI(user: User) {
         try {
-            // 사용자 정보 표시
+            // 사용자 이름과 이메일 표시
             binding.userNameText.text = user.username
             binding.userEmailText.text = user.email
             
             // 나이와 MBTI 정보 표시
-            val ageText = user.age?.toString() ?: "미설정"
-            val mbtiText = if (user.mbti.isNotEmpty()) user.mbti else "미설정"
+            // 나이가 null이거나 0 이하면 "미설정"으로 표시
+            val ageText = if (user.age != null && user.age > 0) user.age.toString() else "미설정"
             
-            // 프로필 정보 표시용 TextView 생성 및 추가
+            // MBTI가 비어있거나 형식에 맞지 않으면 "미설정"으로 표시
+            val mbtiPattern = "^(INTJ|INTP|ENTJ|ENTP|INFJ|INFP|ENFJ|ENFP|ISTJ|ISFJ|ESTJ|ESFJ|ISTP|ISFP|ESTP|ESFP)$"
+            val mbtiText = if (user.mbti.isNotEmpty() && user.mbti.matches(mbtiPattern.toRegex())) 
+                user.mbti 
+            else 
+                "미설정"
+            
+            // 프로필 정보 표시용 TextView 업데이트
             binding.userAgeText.text = "나이: $ageText"
             binding.userMbtiText.text = "MBTI: $mbtiText"
+            
+            Log.d(TAG, "프로필 UI 업데이트 완료: ${user.username}, 이메일: ${user.email}, 나이: $ageText, MBTI: $mbtiText")
         } catch (e: Exception) {
             Log.e(TAG, "updateProfileUI 오류: ${e.message}", e)
         }
@@ -190,16 +206,44 @@ class ProfileFragment : Fragment() {
                             val updatedAge = ageEditText.text.toString().trim()
                             val updatedMbti = mbtiEditText.text.toString().trim().uppercase()
                             
+                            // 입력값 검증
+                            if (updatedName.isEmpty()) {
+                                Toast.makeText(context, "이름은 비워둘 수 없습니다", Toast.LENGTH_SHORT).show()
+                                return@setPositiveButton
+                            }
+                            
+                            // 나이는 숫자로 변환 가능한지 확인
+                            val ageValue = if (updatedAge.isNotEmpty()) {
+                                try {
+                                    updatedAge.toInt()
+                                } catch (e: NumberFormatException) {
+                                    Toast.makeText(context, "나이는 숫자만 입력 가능합니다", Toast.LENGTH_SHORT).show()
+                                    return@setPositiveButton
+                                }
+                            } else null
+                            
+                            // MBTI 형식 검증
+                            val mbtiPattern = "^(INTJ|INTP|ENTJ|ENTP|INFJ|INFP|ENFJ|ENFP|ISTJ|ISFJ|ESTJ|ESFJ|ISTP|ISFP|ESTP|ESFP|)$"
+                            if (updatedMbti.isNotEmpty() && !updatedMbti.matches(mbtiPattern.toRegex())) {
+                                // 형식이 맞지 않으면 경고만 하고 계속 진행
+                                Log.w(TAG, "MBTI 형식이 올바르지 않습니다: $updatedMbti")
+                            }
+                            
                             // 업데이트할 사용자 객체 생성
                             val updatedUser = currentUser.copy(
-                                username = if (updatedName.isNotEmpty()) updatedName else currentUser.username,
-                                age = if (updatedAge.isNotEmpty()) updatedAge.toIntOrNull() else currentUser.age,
+                                username = updatedName,
+                                age = ageValue,
                                 mbti = updatedMbti
                             )
                             
                             // 사용자 정보 업데이트
                             viewModel.updateUserProfile(updatedUser)
+                            
+                            // 성공 메시지 표시
                             Toast.makeText(context, "프로필이 업데이트되었습니다", Toast.LENGTH_SHORT).show()
+                            
+                            // 업데이트된 정보로 UI 갱신
+                            updateProfileUI(updatedUser)
                         } catch (e: Exception) {
                             Log.e(TAG, "프로필 정보 저장 중 오류 발생: ${e.message}", e)
                             Toast.makeText(context, "프로필 저장 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
