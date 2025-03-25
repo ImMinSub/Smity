@@ -110,7 +110,7 @@ class FirebaseSource @Inject constructor(
         }
     }
 
-    fun loginUser(email: String, password: String, activity: Activity) {
+    fun loginUser(email: String, password: String, activity: Activity, callback: (Boolean) -> Unit = {}) {
         isLoading.value = true
         try {
             firebaseAuth.signInWithEmailAndPassword(email, password)
@@ -119,16 +119,19 @@ class FirebaseSource @Inject constructor(
                     if (task.isSuccessful) {
                         isLoggedIn.value = true
                         Toast.makeText(activity, "로그인 성공!", Toast.LENGTH_SHORT).show()
+                        callback(true)
                     } else {
                         val errorMessage = task.exception?.message ?: "알 수 없는 오류"
                         Log.e(TAG, "로그인 실패: $errorMessage", task.exception)
                         Toast.makeText(activity, "로그인 실패: $errorMessage", Toast.LENGTH_SHORT).show()
+                        callback(false)
                     }
                 }
         } catch (e: Exception) {
             isLoading.value = false
             Log.e(TAG, "loginUser 호출 중 예외 발생", e)
             Toast.makeText(activity, "오류 발생: ${e.message}", Toast.LENGTH_SHORT).show()
+            callback(false)
         }
     }
 
