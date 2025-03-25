@@ -44,17 +44,28 @@ class ProfileFragment : Fragment() {
         try {
             Log.d(TAG, "onViewCreated 시작")
             
-            // 사용자 정보 새로고침
+            // 초기 사용자 데이터 로드 (Firebase에서 직접)
+            viewModel.getCurrentUserDirectly()?.let { user ->
+                updateProfileUI(user)
+                Log.d(TAG, "초기 사용자 정보 설정: ${user.email}")
+            }
+            
+            // 사용자 정보 새로고침 (비동기로 Firestore에서 최신 데이터 가져오기)
             viewModel.refreshUserProfile()
             
-            // 현재 사용자 정보 로드
+            // 현재 사용자 정보 관찰
             viewModel.currentUser.observe(viewLifecycleOwner) { user ->
                 if (user != null) {
                     Log.d(TAG, "사용자 정보 업데이트: ${user.email}")
                     updateProfileUI(user)
                 } else {
-                    Log.e(TAG, "사용자 정보가 null입니다.")
-                    Toast.makeText(context, "사용자 정보를 불러올 수 없습니다", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "사용자 정보가 null입니다. Firebase에서 직접 정보 가져오기 시도")
+                    // 대체 방법: Firebase Auth에서 직접 정보 가져오기
+                    viewModel.getCurrentUserDirectly()?.let { directUser ->
+                        updateProfileUI(directUser)
+                    } ?: run {
+                        Toast.makeText(context, "사용자 정보를 불러올 수 없습니다", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             
@@ -72,11 +83,21 @@ class ProfileFragment : Fragment() {
         try {
             // 사용자 이름과 이메일 표시
             binding.userNameText.text = user.username
-            binding.userEmailText.text = user.email
+            
+            // 이메일이 비어있으면 Firebase에서 직접 가져옴
+            val email = if (user.email.isNullOrEmpty()) {
+                val firebaseUser = viewModel.firebaseSource.getCurrentUser()
+                firebaseUser?.email ?: "이메일 정보 없음"
+            } else {
+                user.email
+            }
+            
+            binding.userEmailText.text = email
             
             // 나이와 MBTI 정보 표시
             // 나이가 null이거나 0 이하면 "미설정"으로 표시
-            val ageText = if (user.age != null && user.age > 0) user.age.toString() else "미설정"
+            val userAge = user.age // 로컬 변수에 복사
+            val ageText = if (userAge != null && userAge > 0) userAge.toString() else "미설정"
             
             // MBTI가 비어있거나 형식에 맞지 않으면 "미설정"으로 표시
             val mbtiPattern = "^(INTJ|INTP|ENTJ|ENTP|INFJ|INFP|ENFJ|ENFP|ISTJ|ISFJ|ESTJ|ESFJ|ISTP|ISFP|ESTP|ESFP)$"
@@ -89,7 +110,7 @@ class ProfileFragment : Fragment() {
             binding.userAgeText.text = "나이: $ageText"
             binding.userMbtiText.text = "MBTI: $mbtiText"
             
-            Log.d(TAG, "프로필 UI 업데이트 완료: ${user.username}, 이메일: ${user.email}, 나이: $ageText, MBTI: $mbtiText")
+            Log.d(TAG, "프로필 UI 업데이트 완료: ${user.username}, 이메일: $email, 나이: $ageText, MBTI: $mbtiText")
         } catch (e: Exception) {
             Log.e(TAG, "updateProfileUI 오류: ${e.message}", e)
         }
@@ -161,11 +182,16 @@ class ProfileFragment : Fragment() {
     
     private fun showEditProfileDialog() {
         try {
-            val currentUser = viewModel.currentUser.value ?: run {
-                Log.e(TAG, "프로필 편집 실패: 현재 사용자 정보가 없습니다")
-                Toast.makeText(context, "사용자 정보를 불러올 수 없습니다", Toast.LENGTH_SHORT).show()
-                return
-            }
+            // 현재 사용자 정보 가져오기 (다양한 소스에서 시도)
+            val currentUser = viewModel.currentUser.value 
+                ?: viewModel.getCurrentUserDirectly() 
+                ?: run {
+                    Log.e(TAG, "프로필 편집 실패: 현재 사용자 정보를 가져올 수 없습니다")
+                    Toast.makeText(context, "사용자 정보를 불러올 수 없습니다", Toast.LENGTH_SHORT).show()
+                    return
+                }
+            
+            Log.d(TAG, "프로필 편집 다이얼로그 - 현재 사용자: ${currentUser.email}")
             
             // 레이아웃 인플레이트 시 예외 처리 강화
             val dialogView = try {
