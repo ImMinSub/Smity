@@ -18,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val firebaseSource: FirebaseSource
+    val firebaseSource: FirebaseSource
 ) : ViewModel() {
 
     private val TAG = "MainViewModel"
@@ -192,5 +192,30 @@ class MainViewModel @Inject constructor(
     // 사용자 정보 새로고침 함수 추가
     fun refreshUserProfile() {
         loadCurrentUser()
+    }
+
+    // Firebase 인증에서 직접 현재 로그인된 사용자 정보를 가져옴
+    fun getCurrentUserDirectly(): User? {
+        try {
+            val firebaseUser = firebaseSource.getCurrentUser() ?: return null
+            
+            // 기존 사용자 정보가 있으면 반환
+            val existingUser = currentUser.value
+            if (existingUser != null) {
+                return existingUser
+            }
+            
+            // 기존 정보가 없으면 기본 사용자 정보 생성
+            return User(
+                id = firebaseUser.uid,
+                username = firebaseUser.displayName ?: "사용자",
+                email = firebaseUser.email ?: "",
+                profileImageUrl = "https://via.placeholder.com/150",
+                status = "온라인"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "현재 사용자 정보 직접 가져오기 실패: ${e.message}", e)
+            return null
+        }
     }
 }
