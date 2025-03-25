@@ -1,12 +1,19 @@
 package com.example.capstone.ui.main
 
+import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
+import com.example.capstone.R
+import com.example.capstone.data.User
 import com.example.capstone.databinding.FragmentProfileBinding
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -15,6 +22,7 @@ class ProfileFragment : Fragment() {
     private val TAG = "ProfileFragment"
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: MainViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -36,8 +44,12 @@ class ProfileFragment : Fragment() {
         try {
             Log.d(TAG, "onViewCreated 시작")
             
-            // 프로필 정보 설정
-            setupProfileInfo()
+            // 현재 사용자 정보 로드
+            viewModel.currentUser.observe(viewLifecycleOwner) { user ->
+                if (user != null) {
+                    updateProfileUI(user)
+                }
+            }
             
             // 버튼 클릭 이벤트 설정
             setupClickListeners()
@@ -49,13 +61,21 @@ class ProfileFragment : Fragment() {
         }
     }
     
-    private fun setupProfileInfo() {
+    private fun updateProfileUI(user: User) {
         try {
             // 사용자 정보 표시
-            binding.userNameText.text = "사용자 이름"
-            binding.userEmailText.text = "user@example.com"
+            binding.userNameText.text = user.username
+            binding.userEmailText.text = user.email
+            
+            // 나이와 MBTI 정보 표시
+            val ageText = user.age?.toString() ?: "미설정"
+            val mbtiText = if (user.mbti.isNotEmpty()) user.mbti else "미설정"
+            
+            // 프로필 정보 표시용 TextView 생성 및 추가
+            binding.userAgeText.text = "나이: $ageText"
+            binding.userMbtiText.text = "MBTI: $mbtiText"
         } catch (e: Exception) {
-            Log.e(TAG, "setupProfileInfo 오류: ${e.message}", e)
+            Log.e(TAG, "updateProfileUI 오류: ${e.message}", e)
         }
     }
     
@@ -73,19 +93,40 @@ class ProfileFragment : Fragment() {
             // 로그아웃 버튼 클릭 이벤트
             binding.logoutButton.setOnClickListener {
                 try {
-                    Toast.makeText(context, "로그아웃 클릭됨", Toast.LENGTH_SHORT).show()
-                    // 로그아웃 로직 구현
+                    // 확인 대화상자 표시
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("로그아웃")
+                        .setMessage("정말 로그아웃하시겠습니까?")
+                        .setPositiveButton("예") { _, _ ->
+                            try {
+                                // 로그아웃 처리
+                                viewModel.logout()
+                                
+                                // AuthActivity로 이동
+                                val intent = Intent(requireActivity(), Class.forName("com.example.capstone.ui.auth.AuthActivity"))
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                requireActivity().finish()
+                            } catch (e: Exception) {
+                                Log.e(TAG, "로그아웃 처리 중 오류 발생: ${e.message}", e)
+                                Toast.makeText(context, "로그아웃 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .setNegativeButton("아니오", null)
+                        .show()
                 } catch (e: Exception) {
                     Log.e(TAG, "로그아웃 버튼 클릭 오류: ${e.message}", e)
+                    Toast.makeText(context, "로그아웃 처리 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
                 }
             }
             
             // 프로필 편집 클릭 이벤트
             binding.editProfileLayout.setOnClickListener {
                 try {
-                    Toast.makeText(context, "프로필 편집 클릭됨", Toast.LENGTH_SHORT).show()
+                    showEditProfileDialog()
                 } catch (e: Exception) {
                     Log.e(TAG, "프로필 편집 클릭 오류: ${e.message}", e)
+                    Toast.makeText(context, "프로필 편집 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
                 }
             }
             
@@ -99,6 +140,80 @@ class ProfileFragment : Fragment() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "setupClickListeners 오류: ${e.message}", e)
+        }
+    }
+    
+    private fun showEditProfileDialog() {
+        try {
+            val currentUser = viewModel.currentUser.value ?: run {
+                Log.e(TAG, "프로필 편집 실패: 현재 사용자 정보가 없습니다")
+                Toast.makeText(context, "사용자 정보를 불러올 수 없습니다", Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // 레이아웃 인플레이트 시 예외 처리 강화
+            val dialogView = try {
+                LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_profile, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "대화상자 레이아웃 인플레이트 오류: ${e.message}", e)
+                Toast.makeText(context, "대화상자를 표시할 수 없습니다", Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // UI 요소 찾기 시 예외 처리 추가
+            val nameEditText = dialogView.findViewById<EditText>(R.id.nameEditText) ?: run {
+                Log.e(TAG, "nameEditText를 찾을 수 없습니다")
+                return
+            }
+            val ageEditText = dialogView.findViewById<EditText>(R.id.ageEditText) ?: run {
+                Log.e(TAG, "ageEditText를 찾을 수 없습니다")
+                return
+            }
+            val mbtiEditText = dialogView.findViewById<EditText>(R.id.mbtiEditText) ?: run {
+                Log.e(TAG, "mbtiEditText를 찾을 수 없습니다")
+                return
+            }
+            
+            // 현재 값 설정
+            nameEditText.setText(currentUser.username)
+            currentUser.age?.let { ageEditText.setText(it.toString()) }
+            mbtiEditText.setText(currentUser.mbti)
+            
+            // 대화상자 생성 및 표시
+            try {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("프로필 편집")
+                    .setView(dialogView)
+                    .setPositiveButton("저장") { _, _ ->
+                        try {
+                            val updatedName = nameEditText.text.toString().trim()
+                            val updatedAge = ageEditText.text.toString().trim()
+                            val updatedMbti = mbtiEditText.text.toString().trim().uppercase()
+                            
+                            // 업데이트할 사용자 객체 생성
+                            val updatedUser = currentUser.copy(
+                                username = if (updatedName.isNotEmpty()) updatedName else currentUser.username,
+                                age = if (updatedAge.isNotEmpty()) updatedAge.toIntOrNull() else currentUser.age,
+                                mbti = updatedMbti
+                            )
+                            
+                            // 사용자 정보 업데이트
+                            viewModel.updateUserProfile(updatedUser)
+                            Toast.makeText(context, "프로필이 업데이트되었습니다", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "프로필 정보 저장 중 오류 발생: ${e.message}", e)
+                            Toast.makeText(context, "프로필 저장 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton("취소", null)
+                    .show()
+            } catch (e: Exception) {
+                Log.e(TAG, "대화상자 표시 중 오류 발생: ${e.message}", e)
+                Toast.makeText(context, "대화상자를 표시할 수 없습니다", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "showEditProfileDialog 오류: ${e.message}", e)
+            Toast.makeText(context, "프로필 편집을 시작할 수 없습니다", Toast.LENGTH_SHORT).show()
         }
     }
 
