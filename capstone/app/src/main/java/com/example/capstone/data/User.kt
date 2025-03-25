@@ -20,6 +20,8 @@ data class User(
     var email: String = "",            // 사용자 이메일
     var profileImageUrl: String = "",  // 프로필 이미지 URL
     var status: String = "온라인",       // 사용자 상태 메시지
+    var age: Int? = null,              // 사용자 나이
+    var mbti: String = "",             // 사용자 MBTI
     @Ignore                            // Room DB에 저장하지 않음
     var isOnline: Boolean = false,     // 온라인 상태 여부
     @Ignore                            // Room DB에 저장하지 않음
