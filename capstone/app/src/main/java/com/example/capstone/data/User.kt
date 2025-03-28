@@ -25,7 +25,7 @@ data class User(
     @Ignore                            // Room DB에 저장하지 않음
     var isOnline: Boolean = false,     // 온라인 상태 여부
     @Ignore                            // Room DB에 저장하지 않음
-    var servers: MutableList<String> = ArrayList(),  // 사용자가 속한 서버 ID 목록
+    var groups: MutableList<String> = ArrayList(),  // 사용자가 속한 그룹 ID 목록
     @Ignore                            // Room DB에 저장하지 않음
     val friends: MutableList<String> = ArrayList()   // 사용자의 친구 ID 목록
 ): Parcelable
