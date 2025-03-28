@@ -3,7 +3,7 @@ package com.example.capstone.di  // 의존성 주입 관련 패키지
 import android.content.Context  // 안드로이드 컨텍스트를 사용하기 위한 임포트
 import androidx.room.Room  // Room 데이터베이스 빌더를 사용하기 위한 임포트
 import com.example.capstone.db.AppDatabase  // 앱 데이터베이스 클래스 임포트
-import com.example.capstone.db.ServerDao  // 서버 DAO 인터페이스 임포트
+import com.example.capstone.db.GroupDao  // 그룹 DAO 인터페이스 임포트
 import com.example.capstone.db.UserDao  // 사용자 DAO 인터페이스 임포트
 import dagger.Module  // Dagger 모듈 어노테이션 임포트
 import dagger.Provides  // Dagger 프로바이더 어노테이션 임포트
@@ -23,7 +23,9 @@ object DatabaseModule {  // 데이터베이스 의존성을 제공하는 모듈 
             appContext,  // 애플리케이션 컨텍스트 제공
             AppDatabase::class.java,  // 데이터베이스 클래스 지정
             "capstone.db"  // 데이터베이스 파일 이름 설정
-        ).build()  // 데이터베이스 인스턴스 생성
+        )
+        .fallbackToDestructiveMigration()  // 기존 데이터베이스를 삭제하고 새로 만드는 전략 적용
+        .build()  // 데이터베이스 인스턴스 생성
     }
 
     @Provides  // Dagger에게 이 메서드가 의존성을 제공한다고 알림
@@ -32,7 +34,7 @@ object DatabaseModule {  // 데이터베이스 의존성을 제공하는 모듈 
     }
 
     @Provides  // Dagger에게 이 메서드가 의존성을 제공한다고 알림
-    fun provideServerDao(database: AppDatabase): ServerDao {  // ServerDao 인스턴스를 제공하는 함수
-        return database.serverDao()  // 데이터베이스로부터 ServerDao 인스턴스 반환
+    fun provideGroupDao(database: AppDatabase): GroupDao {  // GroupDao 인스턴스를 제공하는 함수
+        return database.groupDao()  // 데이터베이스로부터 GroupDao 인스턴스 반환
     }
 } 
