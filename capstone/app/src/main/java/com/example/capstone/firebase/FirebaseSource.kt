@@ -6,8 +6,8 @@ import android.util.Log  // 로깅을 위한 임포트
 import android.widget.Toast  // 토스트 메시지를 표시하기 위한 임포트
 import androidx.lifecycle.MutableLiveData  // 관찰 가능한 데이터를 위한 임포트
 import com.example.capstone.data.*  // 애플리케이션 데이터 모델 임포트
-import com.example.capstone.db.ServerDao  // 서버 DAO 인터페이스 임포트
 import com.example.capstone.db.UserDao  // 사용자 DAO 인터페이스 임포트
+import com.example.capstone.db.GroupDao  // 그룹 DAO 인터페이스 임포트
 import com.example.capstone.ui.auth.LoginFragment  // 로그인 프래그먼트 임포트
 import com.example.capstone.ui.auth.RegisterFragment  // 회원가입 프래그먼트 임포트
 import com.example.capstone.util.Constants  // 상수 유틸리티 임포트
@@ -23,7 +23,7 @@ import javax.inject.Singleton  // 싱글톤 스코프 어노테이션 임포트
 @Singleton  // 애플리케이션 생명주기 동안 단일 인스턴스로 유지
 class FirebaseSource @Inject constructor(  // Firebase 데이터 소스 클래스 (의존성 주입 가능)
     private val userDao: UserDao,  // 로컬 데이터베이스의 사용자 DAO
-    private val serverDao: ServerDao  // 로컬 데이터베이스의 서버 DAO
+    private val groupDao: GroupDao  // 로컬 데이터베이스의 그룹 DAO
 ) {
     private val firebaseAuth: FirebaseAuth by lazy {  // 지연 초기화된 Firebase 인증 객체
         try {
@@ -53,7 +53,7 @@ class FirebaseSource @Inject constructor(  // Firebase 데이터 소스 클래�
     }
 
     private val userCollection by lazy { firestore.collection("users") }  // 사용자 정보를 저장하는 Firestore 컬렉션
-    private val serverCollection by lazy { firestore.collection("servers") }  // 서버 정보를 저장하는 Firestore 컬렉션
+    private val groupCollection by lazy { firestore.collection("groups") }  // 그룹 정보를 저장하는 Firestore 컬렉션
     private val channelCollection by lazy { firestore.collection("channels") }  // 채널 정보를 저장하는 Firestore 컬렉션
     private val messageCollection by lazy { firestore.collection("messages") }  // 메시지 정보를 저장하는 Firestore 컬렉션
 
@@ -170,75 +170,302 @@ class FirebaseSource @Inject constructor(  // Firebase 데이터 소스 클래�
 
     suspend fun updateUserProfile(user: User) {  // 사용자 프로필 업데이트 함수
         try {
-            userCollection.document(user.id).set(user).await()  // Firestore에 사용자 문서 업데이트
-            Log.d(TAG, "사용자 프로필 업데이트 성공: ${user.id}")  // 성공 로깅
+            Log.d(TAG, "updateUserProfile 호출됨: userId=${user.id}, username=${user.username}")
+            
+            // 문서가 이미 존재하는지 확인
+            val documentRef = userCollection.document(user.id)
+            val existingDoc = documentRef.get().await()
+            
+            if (existingDoc.exists()) {
+                Log.d(TAG, "기존 사용자 문서 발견: ${user.id}")
+                // 필드별 업데이트 (null이 아닌 필드만)
+                val updates = mutableMapOf<String, Any>()
+                
+                // 필수 필드 추가
+                updates["id"] = user.id
+                updates["username"] = user.username
+                
+                // 선택적 필드 추가 (null이 아닌 경우)
+                if (user.email.isNotEmpty()) updates["email"] = user.email
+                if (user.profileImageUrl.isNotEmpty()) updates["profileImageUrl"] = user.profileImageUrl
+                if (user.status.isNotEmpty()) updates["status"] = user.status
+                if (user.age != null) updates["age"] = user.age!!
+                if (user.mbti.isNotEmpty()) updates["mbti"] = user.mbti
+                updates["groups"] = user.groups
+                updates["friends"] = user.friends
+                
+                // 문서 업데이트
+                documentRef.update(updates).await()
+                Log.d(TAG, "사용자 프로필 업데이트 성공: ${user.id}")
+            } else {
+                Log.d(TAG, "사용자 문서가 존재하지 않음, 새로 생성: ${user.id}")
+                // 새 문서 생성
+                documentRef.set(user).await()
+                Log.d(TAG, "새 사용자 프로필 생성 성공: ${user.id}")
+            }
         } catch (e: Exception) {  // 예외 발생 시
-            Log.e(TAG, "사용자 프로필 업데이트 중 오류", e)  // 오류 로깅
+            Log.e(TAG, "사용자 프로필 업데이트 중 오류 발생: ${e.message}", e)  // 오류 로깅
             throw e  // 오류 전파
         }
     }
 
-    // 서버 관련 함수
-    suspend fun createServer(server: Server) {  // 서버 생성 함수
+    // 그룹 관련 함수
+    suspend fun createGroup(group: Group) {  // 그룹 생성 함수
         try {
-            serverCollection.document(server.serverId).set(server).await()  // Firestore에 서버 문서 생성
-            Log.d(TAG, "서버 생성 성공: ${server.serverId}")  // 성공 로깅
-        } catch (e: Exception) {  // 예외 발생 시
-            Log.e(TAG, "서버 생성 중 오류", e)  // 오류 로깅
-            throw e  // 오류 전파
+            Log.d(TAG, "createGroup 호출됨: groupId=${group.groupId}, name=${group.groupName}")
+            Log.d(TAG, "그룹 데이터: $group")
+            
+            // 현재 인증된 사용자 확인
+            val currentUser = getCurrentUser()
+            if (currentUser == null) {
+                Log.e(TAG, "그룹 생성 실패: 인증된 사용자 없음")
+                throw Exception("인증된 사용자 없음. 로그인이 필요합니다.")
+            }
+            
+            Log.d(TAG, "인증된 사용자 확인: ${currentUser.uid}")
+            
+            // 토큰 갱신 시도
+            try {
+                currentUser.getIdToken(true).await()
+                Log.d(TAG, "사용자 토큰 리프레시 성공")
+            } catch (e: Exception) {
+                Log.e(TAG, "사용자 토큰 리프레시 실패", e)
+                throw Exception("인증 토큰 갱신 실패: ${e.message}")
+            }
+            
+            // Firestore 트랜잭션 사용하여 원자적 쓰기 작업
+            try {
+                // 직접 데이터 쓰기 시도 (트랜잭션 사용하지 않음)
+                Log.d(TAG, "그룹 문서 직접 저장 시도: ${group.groupId}")
+                groupCollection.document(group.groupId).set(group).await()
+                Log.d(TAG, "그룹 문서 저장 성공: ${group.groupId}")
+            } catch (e: Exception) {
+                val errorMsg = e.message ?: "알 수 없는 오류"
+                Log.e(TAG, "Firestore 데이터 저장 실패: $errorMsg", e)
+                
+                // 자세한 에러 정보 로깅
+                Log.e(TAG, "자세한 오류 정보: ${e.stackTraceToString()}")
+                
+                // 오류 종류에 따른 구체적인 메시지
+                when {
+                    errorMsg.contains("permission_denied") || errorMsg.contains("PERMISSION_DENIED") -> {
+                        Log.e(TAG, "Firebase 권한 오류 감지: 보안 규칙을 확인하세요")
+                        throw Exception("데이터베이스 접근 권한이 없습니다. Firebase 보안 규칙을 확인하세요.")
+                    }
+                    errorMsg.contains("network") || errorMsg.contains("UNAVAILABLE") -> {
+                        Log.e(TAG, "네트워크 오류 감지")
+                        throw Exception("네트워크 연결 오류: ${e.message}")
+                    }
+                    errorMsg.contains("unauthenticated") || errorMsg.contains("UNAUTHENTICATED") -> {
+                        Log.e(TAG, "인증 오류 감지: 사용자가 로그인되어 있지 않거나 토큰이 만료됨")
+                        throw Exception("인증 오류: 다시 로그인이 필요합니다.")
+                    }
+                    else -> {
+                        throw Exception("그룹 생성 실패: ${e.message}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "그룹 생성 최종 실패: ${e.message}", e)
+            throw e
         }
     }
 
-    suspend fun getServerById(serverId: String): Server? {  // 서버 ID로 서버 정보 조회 함수
+    suspend fun getGroupById(groupId: String): Group? {  // 그룹 ID로 그룹 정보 조회 함수
         return try {
-            val result = serverCollection.document(serverId).get().await()  // Firestore에서 서버 문서 가져오기
-            val server = result.toObject(Server::class.java)  // 문서를 Server 객체로 변환
-            Log.d(TAG, "서버 조회 결과: $server")  // 조회 결과 로깅
-            server  // 서버 객체 반환
+            val result = groupCollection.document(groupId).get().await()  // Firestore에서 그룹 문서 가져오기
+            val group = result.toObject(Group::class.java)  // 문서를 Group 객체로 변환
+            Log.d(TAG, "그룹 조회 결과: $group")  // 조회 결과 로깅
+            group  // 그룹 객체 반환
         } catch (e: Exception) {  // 예외 발생 시
-            Log.e(TAG, "서버 조회 중 오류: $serverId", e)  // 오류 로깅
+            Log.e(TAG, "그룹 조회 중 오류: $groupId", e)  // 오류 로깅
             null  // null 반환
+        }
+    }
+
+    // 동일한 이름의 그룹에 대해 태그 생성 함수 추가
+    suspend fun generateGroupTag(groupName: String): String {
+        try {
+            val querySnapshot = groupCollection
+                .whereEqualTo("groupName", groupName)
+                .get()
+                .await()
+            
+            val count = querySnapshot.size()
+            return "#${String.format("%03d", count + 1)}"
+        } catch (e: Exception) {
+            Log.e(TAG, "그룹 태그 생성 중 오류", e)
+            return "#001"  // 오류 발생 시 기본 태그 반환
         }
     }
 
     // 채널 관련 함수
     suspend fun createChannel(channel: Channel) {  // 채널 생성 함수
         try {
-            channelCollection.document(channel.channelId).set(channel).await()  // Firestore에 채널 문서 생성
-            Log.d(TAG, "채널 생성 성공: ${channel.channelId}")  // 성공 로깅
-
-            // 서버에 채널 추가
-            val server = getServerById(channel.serverId)  // 채널이 속한 서버 정보 조회
-            server?.let {  // 서버 정보가 있으면
-                it.channels.add(channel.channelId)  // 서버의 채널 목록에 채널 ID 추가
-                if (channel.channelType == "text") {  // 텍스트 채널인 경우
-                    it.textChannels.add(channel.channelId)  // 텍스트 채널 목록에 추가
-                } else {  // 음성 채널인 경우
-                    it.voiceChannels.add(channel.channelId)  // 음성 채널 목록에 추가
-                }
-                serverCollection.document(channel.serverId).set(it).await()  // 서버 정보 업데이트
-                Log.d(TAG, "서버에 채널 추가 성공: ${channel.serverId}")  // 성공 로깅
+            Log.d(TAG, "createChannel 호출됨: channelId=${channel.channelId}, name=${channel.channelName}")
+            Log.d(TAG, "채널 데이터: $channel")
+            
+            // 인증 상태 확인
+            val currentUser = getCurrentUser()
+            if (currentUser == null) {
+                Log.e(TAG, "채널 생성 실패: 인증된 사용자 없음")
+                throw Exception("인증된 사용자 없음. 로그인이 필요합니다.")
             }
-        } catch (e: Exception) {  // 예외 발생 시
-            Log.e(TAG, "채널 생성 중 오류", e)  // 오류 로깅
-            throw e  // 오류 전파
+            
+            // 트랜잭션 시작
+            try {
+                // 먼저 채널 문서 저장
+                Log.d(TAG, "채널 문서 저장 시작: ${channel.channelId}")
+                channelCollection.document(channel.channelId).set(channel).await()
+                Log.d(TAG, "채널 문서 저장 완료: ${channel.channelId}")
+                
+                // 그룹 정보 가져오기
+                Log.d(TAG, "그룹 정보 조회 시작: ${channel.groupId}")
+                val groupDocRef = groupCollection.document(channel.groupId)
+                val groupSnapshot = groupDocRef.get().await()
+                
+                if (!groupSnapshot.exists()) {
+                    Log.e(TAG, "채널 추가 실패: 그룹이 존재하지 않음 - ${channel.groupId}")
+                    throw Exception("그룹이 존재하지 않습니다")
+                }
+                
+                val group = groupSnapshot.toObject(Group::class.java)
+                if (group == null) {
+                    Log.e(TAG, "채널 추가 실패: 그룹 데이터 변환 실패 - ${channel.groupId}")
+                    throw Exception("그룹 데이터를 읽을 수 없습니다")
+                }
+                
+                Log.d(TAG, "그룹 정보 조회 완료: ${group.groupName}")
+                
+                // 중복 추가 확인
+                var updated = false
+                if (!group.channels.contains(channel.channelId)) {
+                    group.channels.add(channel.channelId)  // 그룹의 채널 목록에 채널 ID 추가
+                    updated = true
+                    
+                    if (channel.channelType == "text") {  // 텍스트 채널인 경우
+                        if (!group.textChannels.contains(channel.channelId)) {
+                            group.textChannels.add(channel.channelId)  // 텍스트 채널 목록에 추가
+                        }
+                    } else {  // 음성 채널인 경우
+                        if (!group.voiceChannels.contains(channel.channelId)) {
+                            group.voiceChannels.add(channel.channelId)  // 음성 채널 목록에 추가
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "채널이 이미 그룹에 존재함: ${channel.channelId}")
+                }
+                
+                // 그룹 정보가 업데이트된 경우에만 저장
+                if (updated) {
+                    Log.d(TAG, "그룹 정보 업데이트 시작: ${channel.groupId}")
+                    groupDocRef.set(group).await()
+                    Log.d(TAG, "그룹 정보 업데이트 완료: ${channel.groupId}")
+                }
+                
+                Log.d(TAG, "채널 생성 및 그룹 연결 완료: ${channel.channelId}")
+            } catch (e: Exception) {
+                val errorMsg = e.message ?: "알 수 없는 오류"
+                Log.e(TAG, "채널 생성 처리 중 오류: $errorMsg", e)
+                
+                // 오류 종류 확인
+                if (errorMsg.contains("permission") || errorMsg.contains("denied")) {
+                    throw Exception("데이터베이스 접근 권한이 없습니다: ${e.message}")
+                } else if (errorMsg.contains("network")) {
+                    throw Exception("네트워크 연결 오류: ${e.message}")
+                } else {
+                    throw Exception("채널 생성 실패: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "채널 생성 최종 실패: ${e.message}", e)
+            throw e
         }
     }
 
     // 메시지 관련 함수
-    suspend fun sendMessage(channelId: String, message: Message) {  // 메시지 전송 함수
+    suspend fun getMessages(channelId: String): List<Message> {
         try {
-            messageCollection.document(message.messageId).set(message).await()  // Firestore에 메시지 문서 생성
-            Log.d(TAG, "메시지 전송 성공: ${message.messageId}")  // 성공 로깅
+            Log.d(TAG, "getMessages 호출됨: channelId=$channelId")
+            
+            // channelId 유효성 검사
+            if (channelId.isBlank()) {
+                Log.e(TAG, "getMessages 실패: 채널 ID가 비어있음")
+                return emptyList()
+            }
+            
+            // 메시지 컬렉션 참조
+            val messagesRef = firestore.collection("channels")
+                .document(channelId)
+                .collection("messages")
+                .orderBy("sentAt", com.google.firebase.firestore.Query.Direction.ASCENDING)
+            
+            // 메시지 가져오기
+            val messagesSnapshot = messagesRef.get().await()
+            val messages = mutableListOf<Message>()
+            
+            for (doc in messagesSnapshot.documents) {
+                val message = doc.toObject(Message::class.java)
+                if (message != null) {
+                    messages.add(message)
+                }
+            }
+            
+            Log.d(TAG, "메시지 로드 완료: ${messages.size}개")
+            return messages
+        } catch (e: Exception) {
+            Log.e(TAG, "메시지 로드 실패: ${e.message}", e)
+            throw e
+        }
+    }
 
-            // 채널에 메시지 추가
-            channelCollection.document(channelId).update(  // 채널 문서 업데이트
-                "messages", com.google.firebase.firestore.FieldValue.arrayUnion(message.messageId)  // 메시지 배열에 메시지 ID 추가
-            ).await()
-            Log.d(TAG, "채널에 메시지 추가 성공: $channelId")  // 성공 로깅
-        } catch (e: Exception) {  // 예외 발생 시
-            Log.e(TAG, "메시지 전송 중 오류", e)  // 오류 로깅
-            throw e  // 오류 전파
+    suspend fun sendMessage(channelId: String, message: Message) {
+        try {
+            Log.d(TAG, "sendMessage 호출됨: channelId=$channelId, messageId=${message.messageId}")
+            
+            // 현재 인증된 사용자 확인
+            val currentUser = getCurrentUser()
+            if (currentUser == null) {
+                Log.e(TAG, "메시지 전송 실패: 인증된 사용자 없음")
+                throw Exception("인증된 사용자 없음. 로그인이 필요합니다.")
+            }
+            
+            // 메시지 검증
+            if (message.messageId.isBlank()) {
+                message.messageId = "message_${System.currentTimeMillis()}_${currentUser.uid.take(5)}"
+                Log.d(TAG, "메시지 ID 자동 생성: ${message.messageId}")
+            }
+            
+            // 채널 문서 참조
+            val channelRef = firestore.collection("channels").document(channelId)
+            
+            // 메시지 문서 참조
+            val messageRef = channelRef.collection("messages").document(message.messageId)
+            
+            // 메시지 저장
+            messageRef.set(message).await()
+            Log.d(TAG, "메시지 저장 성공: ${message.messageId}")
+            
+            // 채널 문서 업데이트 (최근 메시지 및 메시지 목록)
+            firestore.runTransaction { transaction ->
+                val channelDoc = transaction.get(channelRef)
+                val channel = channelDoc.toObject(Channel::class.java) ?: throw Exception("채널 정보가 없습니다")
+                
+                // 메시지 ID 추가 (중복 방지)
+                if (!channel.messages.contains(message.messageId)) {
+                    channel.messages.add(message.messageId)
+                }
+                
+                // 채널 문서 업데이트
+                transaction.set(channelRef, channel)
+                
+                null
+            }.await()
+            
+            Log.d(TAG, "채널 정보 업데이트 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "메시지 전송 실패: ${e.message}", e)
+            throw e
         }
     }
 
@@ -258,6 +485,16 @@ class FirebaseSource @Inject constructor(  // Firebase 데이터 소스 클래�
 
     fun getCurrentUser() = firebaseAuth.currentUser //
     
+    // FirebaseSource 클래스에 getFirestore 메서드 추가
+    fun getFirestoreInstance(): FirebaseFirestore {
+        return firestore
+    }
+
+    // 문서 ID 생성 도우미 함수 추가
+    fun generateDocumentId(collectionPath: String): String {
+        return firestore.collection(collectionPath).document().id
+    }
+
     companion object { 
         private const val TAG = "FirebaseSource"
     }
