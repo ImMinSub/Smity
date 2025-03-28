@@ -44,8 +44,8 @@ class CreateChannelFragment : Fragment() {
             val channelType = binding.channelTypeSpinner.selectedItem.toString()
             
             if (channelName.isNotEmpty()) {
-                viewModel.currentServer.value?.serverId?.let { serverId ->
-                    viewModel.createChannel(serverId, channelName, channelType)
+                viewModel.currentGroup.value?.groupId?.let { groupId ->
+                    viewModel.createChannel(groupId, channelName, channelType)
                     findNavController().popBackStack()
                 }
             }
