@@ -9,13 +9,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.example.capstone.databinding.FragmentCreateServerBinding
+import com.example.capstone.databinding.FragmentCreateGroupBinding
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class CreateServerFragment : Fragment() {
+class CreateGroupFragment : Fragment() {
 
-    private var _binding: FragmentCreateServerBinding? = null
+    private var _binding: FragmentCreateGroupBinding? = null
     private val binding get() = _binding!!
     private val viewModel: MainViewModel by viewModels()
     private var selectedImageUri: Uri? = null
@@ -23,7 +23,7 @@ class CreateServerFragment : Fragment() {
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             selectedImageUri = it
-            binding.serverIconImageView.setImageURI(it)
+            binding.groupIconImageView.setImageURI(it)
         }
     }
 
@@ -32,7 +32,7 @@ class CreateServerFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentCreateServerBinding.inflate(inflater, container, false)
+        _binding = FragmentCreateGroupBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -44,11 +44,11 @@ class CreateServerFragment : Fragment() {
             getContent.launch("image/*")
         }
 
-        // 서버 생성 버튼 클릭 리스너
-        binding.createServerButton.setOnClickListener {
-            val serverName = binding.serverNameEditText.text.toString()
-            if (serverName.isNotEmpty()) {
-                viewModel.createServer(serverName, selectedImageUri)
+        // 그룹 생성 버튼 클릭 리스너
+        binding.createGroupButton.setOnClickListener {
+            val groupName = binding.groupNameEditText.text.toString()
+            if (groupName.isNotEmpty()) {
+                viewModel.createGroup(groupName)
                 findNavController().popBackStack()
             }
         }
@@ -58,5 +58,4 @@ class CreateServerFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
-}
-
+} 
