@@ -1,6 +1,7 @@
 package com.example.capstone.data
 
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
 
 /**
@@ -11,6 +12,9 @@ import androidx.room.PrimaryKey
 data class UserPreferences(
     @PrimaryKey
     var userId: String = "",            // 사용자 고유 식별자 (기본 키)
-    var currentServerId: String = "",   // 사용자가 마지막으로 접속한 서버 ID
+    var currentGroupId: String = "",   // 사용자가 마지막으로 접속한 그룹 ID
     var currentChannelId: String = ""   // 사용자가 마지막으로 접속한 채널 ID
-)
+) {
+    @Ignore
+    constructor() : this("", "", "")
+}
