@@ -8,13 +8,13 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
-import com.example.capstone.databinding.FragmentServerChannelsBinding
+import com.example.capstone.databinding.FragmentGroupChannelsBinding
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class ServerChannelsFragment : Fragment() {
-    private val TAG = "ServerChannelsFragment"
-    private var _binding: FragmentServerChannelsBinding? = null
+class GroupChannelsFragment : Fragment() {
+    private val TAG = "GroupChannelsFragment"
+    private var _binding: FragmentGroupChannelsBinding? = null
     private val binding get() = _binding!!
 
     override fun onCreateView(
@@ -24,7 +24,7 @@ class ServerChannelsFragment : Fragment() {
     ): View {
         try {
             Log.d(TAG, "onCreateView 시작")
-            _binding = FragmentServerChannelsBinding.inflate(inflater, container, false)
+            _binding = FragmentGroupChannelsBinding.inflate(inflater, container, false)
             return binding.root
         } catch (e: Exception) {
             Log.e(TAG, "onCreateView 오류: ${e.message}", e)
@@ -50,13 +50,13 @@ class ServerChannelsFragment : Fragment() {
 
     private fun setupToolbar() {
         try {
-            // 서버 이름 설정
-            binding.serverNameText.text = "Server #001"
+            // 그룹 이름 설정
+            binding.groupNameText.text = "Group #001"
             
             // 드롭다운 아이콘 클릭 이벤트
             binding.dropdownIcon.setOnClickListener {
                 Log.d(TAG, "드롭다운 아이콘 클릭됨")
-                // 서버 메뉴 표시 로직
+                // 그룹 메뉴 표시 로직
             }
         } catch (e: Exception) {
             Log.e(TAG, "setupToolbar 오류: ${e.message}", e)
