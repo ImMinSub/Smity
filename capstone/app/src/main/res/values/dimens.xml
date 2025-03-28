@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 액션바 관련 크기 -->
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">16dp</dimen>
+    
+    <!-- 메시지 관련 크기 -->
+    <dimen name="message_item_spacing">8dp</dimen>
+    
+    <!-- 아바타/프로필 이미지 크기 -->
+    <dimen name="profile_image_size">40dp</dimen>
+    <dimen name="profile_image_small">36dp</dimen>
+    
+    <!-- 텍스트 크기 -->
+    <dimen name="text_large">18sp</dimen>
+    <dimen name="text_medium">16sp</dimen>
+    <dimen name="text_small">14sp</dimen>
+    <dimen name="text_micro">12sp</dimen>
+    
+    <!-- 기본 마진 -->
+    <dimen name="margin_small">8dp</dimen>
+    <dimen name="margin_medium">16dp</dimen>
+    <dimen name="margin_large">24dp</dimen>
+    
+    <!-- 채팅 관련 -->
+    <dimen name="avatar_size">40dp</dimen>
+    <dimen name="chat_message_corner_radius">12dp</dimen>
+    
+    <!-- 그룹 및 채널 카드 -->
+    <dimen name="group_card_height">80dp</dimen>
+    <dimen name="channel_card_height">64dp</dimen>
+</resources> 
