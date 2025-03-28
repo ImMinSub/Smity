@@ -34,4 +34,5 @@
     <!-- 채팅 -->
     <string name="message_hint">메시지 입력...</string>
     <string name="send_message">메시지 전송</string>
+    <string name="sender_profile_image">발신자 프로필 이미지</string>
 </resources>
